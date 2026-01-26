@@ -3,279 +3,369 @@ package main
 import (
 	"bytes"
 	"crypto/rand"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
+	_ "github.com/glebarez/go-sqlite"
 	"github.com/joho/godotenv"
 )
 
-// --- Estruturas de Dados ---
+// --- Estruturas ---
 
-type EmailRule struct {
-	ID        string    `json:"id"`
-	Email     string    `json:"email"`
-	CreatedAt time.Time `json:"created_at"`
-	ExpiresAt time.Time `json:"expires_at"`
+type Config struct {
+	CFToken string `json:"cf_token"`
+	ZoneID  string `json:"zone_id"`
+	Domain  string `json:"domain"`
 }
 
-type CFMatcher struct {
-	Type  string `json:"type"`
-	Field string `json:"field"`
-	Value string `json:"value"`
+type Destination struct {
+	ID    int    `json:"id"`
+	Email string `json:"email"`
 }
 
-type CFAction struct {
-	Type  string   `json:"type"`
-	Value []string `json:"value"`
+type EmailEntry struct {
+	ID          string    `json:"id"`
+	Email       string    `json:"email"`
+	Destination string    `json:"destination"`
+	CreatedAt   time.Time `json:"created_at"`
+	Active      bool      `json:"active"`
 }
 
-type CFRequest struct {
-	Actions  []CFAction  `json:"actions"`
-	Matchers []CFMatcher `json:"matchers"`
-	Enabled  bool        `json:"enabled"`
-	Name     string      `json:"name"`
+type CreateRequest struct {
+	Destination string `json:"destination"`
 }
 
-type CFResponse struct {
-	Success bool `json:"success"`
-	Result  struct {
-		ID string `json:"id"`
-	} `json:"result"`
-	Errors []struct {
-		Message string `json:"message"`
-	} `json:"errors"`
-}
+// --- Listas de Nomes ---
+var adjetivos = []string{"cansado", "calvo", "radioativo", "humilde", "furioso", "suspeito", "duvidoso", "crocante", "quase-rico", "lendario", "misterioso", "caotico", "triste", "iludido", "blindado", "agiota", "nutella", "raiz", "toxico", "quase-senior"}
+var substantivos = []string{"boleto", "estagiario", "capivara", "gambiarra", "tijolo", "hacker", "pastel", "uno-com-escada", "coach", "cafe", "servidor", "bug", "golpe", "primo", "vaxco", "lider-tecnico", "git-blame", "deploy", "backup", "junior"}
 
-// --- Gerenciador de Estado ---
-
-type Manager struct {
-	mu     sync.Mutex
-	timers map[string]*time.Timer
-	emails map[string]EmailRule
-}
-
-var mgr = &Manager{
-	timers: make(map[string]*time.Timer),
-	emails: make(map[string]EmailRule),
-}
-
-// --- Listas de Palavras (Sem acentos para compatibilidade de email) ---
-var adjetivos = []string{
-	"cansado", "calvo", "radioativo", "humilde", "furioso",
-	"suspeito", "duvidoso", "crocante", "quase-rico", "lendario",
-	"misterioso", "caotico", "triste", "iludido", "blindado",
-}
-
-var substantivos = []string{
-	"boleto", "estagiario", "capivara", "gambiarra", "tijolo",
-	"hacker", "pastel", "uno-com-escada", "coach", "cafe",
-	"servidor", "bug", "golpe", "primo", "vaxco",
-}
-
-// --- Configurações ---
-var (
-	cfToken     string
-	cfZoneID    string
-	cfDomain    string
-	destination string
-)
+// --- Globais ---
+var db *sql.DB
+var activeTimers = make(map[string]*time.Timer)
+var timerMu sync.Mutex
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("Arquivo .env não encontrado, assumindo variáveis de ambiente.")
-	}
-	
-	cfToken = os.Getenv("TOKEN_CLOUDFLARE")
-	cfZoneID = os.Getenv("ZONE_ID")
-	cfDomain = os.Getenv("DOMAIN")
-	destination = os.Getenv("EMAIL_DESTINO")
-	
+	godotenv.Load()
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	if cfToken == "" || cfZoneID == "" || destination == "" {
-		log.Fatal("ERRO: Variáveis de ambiente incompletas.")
-	}
+	initDB()
 
 	http.Handle("/", http.FileServer(http.Dir("./static")))
-	http.HandleFunc("/api/list", handleList)
+
+	// API
+	http.HandleFunc("/api/config", handleConfig)
+	http.HandleFunc("/api/destinations", handleDestinations) // Novo: Gerenciar lista de emails
 	http.HandleFunc("/api/create", handleCreate)
+	http.HandleFunc("/api/active", handleListActive)
+	http.HandleFunc("/api/history", handleHistory)
 	http.HandleFunc("/api/delete", handleDelete)
 
 	addr := ":" + port
-	fmt.Printf("🚀 Dashboard rodando em http://localhost%s\n", addr)
-	if err := http.ListenAndServe(addr, nil); err != nil {
+	fmt.Printf("🚀 Sistema Cloudflare Mail v2 rodando em http://localhost%s\n", addr)
+	log.Fatal(http.ListenAndServe(addr, nil))
+}
+
+// --- Banco de Dados ---
+
+func initDB() {
+	var err error
+	db, err = sql.Open("sqlite", "data.db")
+	if err != nil {
 		log.Fatal(err)
+	}
+
+	// Schema Atualizado
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS config (
+			id INTEGER PRIMARY KEY CHECK (id = 1),
+			cf_token TEXT,
+			zone_id TEXT,
+			domain TEXT
+		);
+		CREATE TABLE IF NOT EXISTS destinations (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			email TEXT UNIQUE
+		);
+		CREATE TABLE IF NOT EXISTS emails (
+			id TEXT PRIMARY KEY,
+			email TEXT UNIQUE,
+			destination TEXT,
+			created_at DATETIME,
+			active BOOLEAN
+		);
+	`)
+	if err != nil {
+		log.Fatal("Erro ao migrar DB:", err)
 	}
 }
 
-// --- Handlers HTTP ---
+// --- Handlers ---
 
-func handleList(w http.ResponseWriter, r *http.Request) {
-	mgr.mu.Lock()
-	defer mgr.mu.Unlock()
+func handleConfig(w http.ResponseWriter, r *http.Request) {
+	var currentCfg Config
+	row := db.QueryRow("SELECT cf_token, zone_id, domain FROM config WHERE id = 1")
+	row.Scan(&currentCfg.CFToken, &currentCfg.ZoneID, &currentCfg.Domain)
 
-	list := make([]EmailRule, 0, len(mgr.emails))
-	for _, e := range mgr.emails {
-		list = append(list, e)
+	if r.Method == http.MethodPost {
+		var newCfg Config
+		if err := json.NewDecoder(r.Body).Decode(&newCfg); err != nil {
+			http.Error(w, err.Error(), 400)
+			return
+		}
+
+		finalToken := newCfg.CFToken
+		if len(currentCfg.CFToken) > 0 && newCfg.CFToken == strings.Repeat("*", len(currentCfg.CFToken)) {
+			finalToken = currentCfg.CFToken
+		}
+
+		_, err := db.Exec(`
+			INSERT INTO config (id, cf_token, zone_id, domain) 
+			VALUES (1, ?, ?, ?) 
+			ON CONFLICT(id) DO UPDATE SET cf_token=excluded.cf_token, zone_id=excluded.zone_id, domain=excluded.domain
+		`, finalToken, newCfg.ZoneID, newCfg.Domain)
+
+		if err != nil {
+			http.Error(w, err.Error(), 500)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// GET
+	maskedCfg := currentCfg
+	if len(currentCfg.CFToken) > 0 {
+		maskedCfg.CFToken = strings.Repeat("*", len(currentCfg.CFToken))
+	} else {
+		maskedCfg.CFToken = ""
+	}
+	json.NewEncoder(w).Encode(maskedCfg)
+}
+
+// Handler para gerenciar múltiplos destinos
+func handleDestinations(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodPost {
+		var d Destination
+		json.NewDecoder(r.Body).Decode(&d)
+		if d.Email == "" {
+			http.Error(w, "Email invalido", 400)
+			return
+		}
+		_, err := db.Exec("INSERT INTO destinations (email) VALUES (?)", d.Email)
+		if err != nil {
+			http.Error(w, "Erro ao adicionar (duplicado?)", 500)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	if r.Method == http.MethodDelete {
+		id := r.URL.Query().Get("id")
+		db.Exec("DELETE FROM destinations WHERE id = ?", id)
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	// GET
+	rows, _ := db.Query("SELECT id, email FROM destinations ORDER BY id DESC")
+	defer rows.Close()
+	var list []Destination
+	for rows.Next() {
+		var d Destination
+		rows.Scan(&d.ID, &d.Email)
+		list = append(list, d)
+	}
+	if list == nil {
+		list = []Destination{}
 	}
 	json.NewEncoder(w).Encode(list)
 }
 
 func handleCreate(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
-	// 1. Gerar Nome Engraçado
-	nomeEmail := gerarNomeEngracado()
-	alias := fmt.Sprintf("%s@%s", nomeEmail, cfDomain)
-
-	// 2. Criar no Cloudflare
-	ruleID, err := cfCreateRule(alias)
+	cfg, err := getConfig()
 	if err != nil {
-		log.Printf("Erro ao criar regra no CF: %v", err)
-		http.Error(w, "Erro ao criar regra no Cloudflare", http.StatusInternalServerError)
+		http.Error(w, "Configure o sistema primeiro!", 400)
 		return
 	}
 
-	// 3. Timer de 5 min
-	expiration := time.Now().Add(5 * time.Minute)
-	rule := EmailRule{
-		ID:        ruleID,
-		Email:     alias,
-		CreatedAt: time.Now(),
-		ExpiresAt: expiration,
+	// LER DESTINO DA REQUISIÇÃO
+	var req CreateRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil || req.Destination == "" {
+		http.Error(w, "Destino obrigatório", 400)
+		return
 	}
 
-	mgr.mu.Lock()
-	mgr.emails[ruleID] = rule
-	mgr.timers[ruleID] = time.AfterFunc(5*time.Minute, func() {
-		log.Printf("⏰ Auto-deletando %s", alias)
-		deleteRoutine(ruleID)
-	})
-	mgr.mu.Unlock()
+	// Gerar Nome
+	var alias string
+	for i := 0; i < 10; i++ {
+		candidato := fmt.Sprintf("%s@%s", gerarNomeEngracado(), cfg.Domain)
+		if !emailExists(candidato) {
+			alias = candidato
+			break
+		}
+	}
+	if alias == "" {
+		http.Error(w, "Falha ao gerar nome único", 500)
+		return
+	}
 
-	json.NewEncoder(w).Encode(rule)
+	// Criar no Cloudflare usando o destino escolhido
+	ruleID, err := cfCreateRule(cfg, alias, req.Destination)
+	if err != nil {
+		http.Error(w, "Erro Cloudflare: "+err.Error(), 500)
+		return
+	}
+
+	// Salvar no DB com o destino
+	_, err = db.Exec("INSERT INTO emails (id, email, destination, created_at, active) VALUES (?, ?, ?, ?, ?)",
+		ruleID, alias, req.Destination, time.Now(), true)
+	if err != nil {
+		log.Println("Erro DB:", err)
+	}
+
+	startTimer(ruleID, alias, cfg)
+	json.NewEncoder(w).Encode(map[string]string{"id": ruleID, "email": alias})
+}
+
+func handleListActive(w http.ResponseWriter, r *http.Request) {
+	rows, _ := db.Query("SELECT id, email, destination, created_at, active FROM emails WHERE active = 1 ORDER BY created_at DESC")
+	if rows != nil {
+		defer rows.Close()
+	}
+	sendRows(w, rows)
+}
+
+func handleHistory(w http.ResponseWriter, r *http.Request) {
+	rows, _ := db.Query("SELECT id, email, destination, created_at, active FROM emails ORDER BY created_at DESC")
+	if rows != nil {
+		defer rows.Close()
+	}
+	sendRows(w, rows)
 }
 
 func handleDelete(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodDelete {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
 	id := r.URL.Query().Get("id")
-	if id == "" {
-		http.Error(w, "ID required", http.StatusBadRequest)
+	cfg, err := getConfig()
+	if err != nil {
+		http.Error(w, "Erro config", 500)
 		return
 	}
 
-	if err := deleteRoutine(id); err != nil {
-		log.Printf("Erro ao deletar regra %s: %v", id, err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+	cfDeleteRule(cfg, id)
+	db.Exec("UPDATE emails SET active = 0 WHERE id = ?", id)
+
+	timerMu.Lock()
+	if t, ok := activeTimers[id]; ok {
+		t.Stop()
+		delete(activeTimers, id)
 	}
+	timerMu.Unlock()
 	w.WriteHeader(http.StatusOK)
 }
 
-// --- Lógica Auxiliar ---
+// --- Helpers ---
+
+func getConfig() (Config, error) {
+	var c Config
+	err := db.QueryRow("SELECT cf_token, zone_id, domain FROM config WHERE id = 1").Scan(&c.CFToken, &c.ZoneID, &c.Domain)
+	if c.CFToken == "" {
+		return c, fmt.Errorf("no config")
+	}
+	return c, err
+}
+
+func emailExists(email string) bool {
+	var exists bool
+	db.QueryRow("SELECT EXISTS(SELECT 1 FROM emails WHERE email = ?)", email).Scan(&exists)
+	return exists
+}
+
+func sendRows(w http.ResponseWriter, rows *sql.Rows) {
+	var list []EmailEntry
+	if rows != nil {
+		for rows.Next() {
+			var e EmailEntry
+			rows.Scan(&e.ID, &e.Email, &e.Destination, &e.CreatedAt, &e.Active)
+			list = append(list, e)
+		}
+	}
+	if list == nil {
+		list = []EmailEntry{}
+	}
+	json.NewEncoder(w).Encode(list)
+}
+
+func startTimer(id, email string, cfg Config) {
+	timerMu.Lock()
+	activeTimers[id] = time.AfterFunc(5*time.Minute, func() {
+		log.Printf("⏰ Expirou: %s", email)
+		cfDeleteRule(cfg, id)
+		db.Exec("UPDATE emails SET active = 0 WHERE id = ?", id)
+		timerMu.Lock()
+		delete(activeTimers, id)
+		timerMu.Unlock()
+	})
+	timerMu.Unlock()
+}
 
 func gerarNomeEngracado() string {
-	// Pega um índice aleatório seguro para adjetivos
 	nAdj, _ := rand.Int(rand.Reader, big.NewInt(int64(len(adjetivos))))
-	// Pega um índice aleatório seguro para substantivos
 	nSub, _ := rand.Int(rand.Reader, big.NewInt(int64(len(substantivos))))
-	// Pega um número aleatório de 0 a 999 para evitar colisões
 	nNum, _ := rand.Int(rand.Reader, big.NewInt(1000))
-
-	adj := adjetivos[nAdj.Int64()]
-	sub := substantivos[nSub.Int64()]
-
-	return fmt.Sprintf("%s-%s-%d", sub, adj, nNum.Int64())
+	return fmt.Sprintf("%s-%s-%d", substantivos[nSub.Int64()], adjetivos[nAdj.Int64()], nNum.Int64())
 }
 
-func deleteRoutine(id string) error {
-	mgr.mu.Lock()
-	defer mgr.mu.Unlock()
+// --- Cloudflare ---
 
-	if _, exists := mgr.emails[id]; !exists {
-		return nil
+func cfCreateRule(cfg Config, email, destination string) (string, error) {
+	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/email/routing/rules", cfg.ZoneID)
+	payload := map[string]interface{}{
+		"enabled": true, "name": "Temp: " + email,
+		"matchers": []interface{}{map[string]string{"type": "literal", "field": "to", "value": email}},
+		"actions":  []interface{}{map[string]interface{}{"type": "forward", "value": []string{destination}}},
 	}
-
-	if t, ok := mgr.timers[id]; ok {
-		t.Stop()
-		delete(mgr.timers, id)
-	}
-
-	if err := cfDeleteRule(id); err != nil {
-		log.Printf("Aviso: Falha ao deletar no Cloudflare: %v", err)
-	}
-
-	delete(mgr.emails, id)
-	return nil
-}
-
-// --- Integração Cloudflare ---
-
-func cfCreateRule(email string) (string, error) {
-	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/email/routing/rules", cfZoneID)
-	
-	payload := CFRequest{
-		Enabled: true,
-		Name:    "Temp: " + email,
-		Matchers: []CFMatcher{
-			{Type: "literal", Field: "to", Value: email},
-		},
-		Actions: []CFAction{
-			{Type: "forward", Value: []string{destination}},
-		},
-	}
-
-	body, err := json.Marshal(payload)
-	if err != nil { return "", err }
-	
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
-	if err != nil { return "", err }
-
-	req.Header.Set("Authorization", "Bearer "+cfToken)
+	body, _ := json.Marshal(payload)
+	req, _ := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	req.Header.Set("Authorization", "Bearer "+cfg.CFToken)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := http.DefaultClient.Do(req)
-	if err != nil { return "", err }
+	if err != nil {
+		return "", err
+	}
 	defer resp.Body.Close()
 
-	var res CFResponse
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil { return "", err }
-	
+	var res struct {
+		Success bool `json:"success"`
+		Result  struct{ ID string `json:"id"` } `json:"result"`
+		Errors  []struct{ Message string `json:"message"` } `json:"errors"`
+	}
+	json.NewDecoder(resp.Body).Decode(&res)
 	if !res.Success {
-		msg := "Unknown API Error"
-		if len(res.Errors) > 0 { msg = res.Errors[0].Message }
-		return "", fmt.Errorf("Cloudflare API Error: %s", msg)
+		if len(res.Errors) > 0 {
+			return "", fmt.Errorf("%s", res.Errors[0].Message)
+		}
+		return "", fmt.Errorf("erro desconhecido CF")
 	}
 	return res.Result.ID, nil
 }
 
-func cfDeleteRule(id string) error {
-	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/email/routing/rules/%s", cfZoneID, id)
-	req, err := http.NewRequest("DELETE", url, nil)
-	if err != nil { return err }
-
-	req.Header.Set("Authorization", "Bearer "+cfToken)
+func cfDeleteRule(cfg Config, id string) {
+	url := fmt.Sprintf("https://api.cloudflare.com/client/v4/zones/%s/email/routing/rules/%s", cfg.ZoneID, id)
+	req, _ := http.NewRequest("DELETE", url, nil)
+	req.Header.Set("Authorization", "Bearer "+cfg.CFToken)
 	req.Header.Set("Content-Type", "application/json")
-	
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil { return err }
-	defer resp.Body.Close()
-
-	if resp.StatusCode != 200 { return fmt.Errorf("status code: %d", resp.StatusCode) }
-	return nil
+	http.DefaultClient.Do(req)
 }
