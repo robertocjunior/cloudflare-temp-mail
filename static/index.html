@@ -10,65 +10,26 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
         body { font-family: 'Inter', sans-serif; }
         
-        /* --- CORREÇÃO DA SIDEBAR --- */
-        .sidebar { 
-            width: 16rem; 
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
-        }
-        
-        /* Largura fechada */
-        .sidebar.collapsed { 
-            width: 5rem; 
-        }
-
-        /* Texto: Transição suave */
-        .sidebar-text { 
-            transition: opacity 0.2s ease;
-            white-space: nowrap; 
-            overflow: hidden; 
-            opacity: 1;
-        }
-        
-        /* Quando fechado: esconde texto */
-        .sidebar.collapsed .sidebar-text { 
-            opacity: 0;
-            pointer-events: none;
-            display: none; 
-        }
-
-        /* Centraliza icones de navegação quando fechado */
-        .sidebar.collapsed .nav-item {
-            justify-content: center;
-        }
-        .sidebar.collapsed .nav-item i {
-            margin-right: 0;
-        }
-
-        /* CORREÇÃO DO LOGO: Resetar TODO o padding */
-        .sidebar.collapsed .logo-area {
-            justify-content: center;
-            padding: 0; /* Remove px-6 totalmente */
-        }
-        
-        /* Ajuste fino para o icone do logo não pular na transição */
-        .logo-area i {
-            transition: margin 0.3s;
-        }
+        .sidebar { width: 16rem; transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+        .sidebar.collapsed { width: 5rem; }
+        .sidebar-text { transition: opacity 0.2s ease; white-space: nowrap; overflow: hidden; opacity: 1; }
+        .sidebar.collapsed .sidebar-text { opacity: 0; pointer-events: none; display: none; }
+        .sidebar.collapsed .nav-item { justify-content: center; }
+        .sidebar.collapsed .nav-item i { margin-right: 0; }
+        .sidebar.collapsed .logo-area { justify-content: center; padding: 0; }
+        .logo-area i { transition: margin 0.3s; }
     </style>
 </head>
 <body class="bg-slate-900 text-slate-100 h-screen flex overflow-hidden">
 
     <aside id="sidebar" class="sidebar bg-slate-800 border-r border-slate-700 flex flex-col justify-between shadow-2xl relative z-20 shrink-0">
-        
         <div class="logo-area h-16 flex items-center px-6 border-b border-slate-700 relative transition-all">
             <i class="fa-solid fa-fire text-orange-500 text-2xl shrink-0"></i>
             <span class="sidebar-text font-bold text-xl ml-3 tracking-tight">Burner<span class="text-orange-500">Mail</span></span>
-            
             <button onclick="toggleSidebar()" class="absolute -right-3 top-6 bg-orange-600 rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:bg-orange-500 transition border border-slate-900 z-50">
                 <i class="fa-solid fa-chevron-left transition-transform duration-300" id="chevron"></i>
             </button>
         </div>
-
         <nav class="flex-1 py-6 space-y-2 px-3">
             <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center p-3 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition group">
                 <i class="fa-solid fa-inbox w-6 text-center text-lg shrink-0 transition-all"></i>
@@ -83,14 +44,12 @@
                 <span class="sidebar-text ml-3 font-medium">Configurações</span>
             </button>
         </nav>
-
         <div class="p-4 border-t border-slate-700 text-center overflow-hidden">
-            <span class="sidebar-text text-xs text-slate-500">v2.0 Beta</span>
+            <span class="sidebar-text text-xs text-slate-500">v4.0 Full Manager</span>
         </div>
     </aside>
 
     <main class="flex-1 flex flex-col relative overflow-hidden bg-slate-900 w-full">
-        
         <header class="h-16 bg-slate-800/50 backdrop-blur-md border-b border-slate-700 flex items-center px-8 justify-between shrink-0">
             <h2 id="page-title" class="text-lg font-bold text-white">Dashboard</h2>
             <div id="create-btn-area">
@@ -129,14 +88,13 @@
             </div>
 
             <div id="view-config" class="view-section hidden max-w-4xl mx-auto space-y-8">
-                
                 <div class="bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-700">
                     <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
                         <i class="fa-brands fa-cloudflare text-orange-500"></i> Credenciais Cloudflare
                     </h3>
                     <form onsubmit="saveConfig(event)" class="grid grid-cols-1 gap-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">API Token</label>
+                            <label class="block text-xs font-bold text-slate-400 uppercase mb-1">API Token (Permissões: Account > Email Routing > Edit)</label>
                             <input type="text" id="cfg-token" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-orange-400 font-mono focus:border-orange-500 outline-none" placeholder="Token mascarado..." required>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -156,18 +114,21 @@
                 </div>
 
                 <div class="bg-slate-800 p-8 rounded-xl shadow-lg border border-slate-700">
-                    <h3 class="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                        <i class="fa-solid fa-paper-plane text-blue-500"></i> Destinos de Encaminhamento
-                    </h3>
-                    
-                    <div class="flex gap-2 mb-6">
-                        <input type="email" id="new-dest-email" class="flex-1 bg-slate-900 border border-slate-600 rounded p-3 text-white focus:border-blue-500 outline-none" placeholder="Adicionar novo email real (ex: meu.nome@gmail.com)">
-                        <button onclick="addDestination()" class="bg-blue-600 hover:bg-blue-500 px-6 rounded text-white font-bold shadow">
-                            Adicionar
-                        </button>
+                    <div class="flex justify-between items-center mb-6">
+                        <h3 class="text-xl font-bold text-white flex items-center gap-2">
+                            <i class="fa-solid fa-users-gear text-blue-500"></i> Gerenciar Destinos
+                        </h3>
+                        <div class="flex gap-2">
+                            <button onclick="loadDestinations()" class="text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded transition border border-slate-600">
+                                <i class="fa-solid fa-sync"></i>
+                            </button>
+                            <button onclick="openAddDestModal()" class="text-xs bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded transition font-bold shadow">
+                                <i class="fa-solid fa-plus mr-1"></i> Adicionar
+                            </button>
+                        </div>
                     </div>
-
-                    <div class="space-y-2" id="dest-list">
+                    
+                    <div class="space-y-3" id="dest-list">
                         </div>
                 </div>
             </div>
@@ -180,31 +141,42 @@
     <div id="create-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-600 rounded-xl shadow-2xl max-w-md w-full p-6 relative transform transition-all scale-100">
             <button onclick="closeCreateModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
-            
             <h3 class="text-xl font-bold text-white mb-4">Gerar Novo Email</h3>
-            <p class="text-slate-400 text-sm mb-6">Escolha para onde as mensagens recebidas devem ser enviadas.</p>
-            
+            <p class="text-slate-400 text-sm mb-6">Escolha o destino (sincronizado do Cloudflare).</p>
             <div class="mb-6">
                 <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Destino Real</label>
-                <select id="modal-dest-select" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none focus:border-orange-500">
-                    </select>
+                <select id="modal-dest-select" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none focus:border-orange-500"></select>
+                <p id="modal-warning" class="hidden text-yellow-500 text-xs mt-2"><i class="fa-solid fa-triangle-exclamation mr-1"></i> Selecione um email verificado.</p>
             </div>
-
             <button onclick="confirmCreateEmail()" id="btn-confirm-create" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded shadow-lg transition flex justify-center items-center gap-2">
                 <i class="fa-solid fa-magic-wand-sparkles"></i> Gerar Agora
             </button>
         </div>
     </div>
 
+    <div id="add-dest-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-600 rounded-xl shadow-2xl max-w-md w-full p-6 relative">
+            <button onclick="closeAddDestModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            <h3 class="text-xl font-bold text-white mb-2">Adicionar Novo Destino</h3>
+            <p class="text-slate-400 text-sm mb-6">O Cloudflare enviará um email de confirmação para este endereço.</p>
+            
+            <div class="mb-6">
+                <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Endereço de Email</label>
+                <input type="email" id="new-dest-input" class="w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none focus:border-blue-500" placeholder="voce@gmail.com">
+            </div>
+
+            <button onclick="confirmAddDest()" id="btn-confirm-add" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded shadow-lg transition flex justify-center items-center gap-2">
+                <i class="fa-solid fa-paper-plane"></i> Enviar Solicitação
+            </button>
+        </div>
+    </div>
+
     <script>
-        // --- Sidebar Logic ---
         let sidebarCollapsed = false;
-        
         function toggleSidebar() {
             sidebarCollapsed = !sidebarCollapsed;
             const sidebar = document.getElementById('sidebar');
             const chevron = document.getElementById('chevron');
-            
             if(sidebarCollapsed) {
                 sidebar.classList.add('collapsed');
                 chevron.style.transform = "rotate(180deg)";
@@ -214,21 +186,13 @@
             }
         }
 
-        // --- Tabs Logic ---
         function switchTab(tab) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             document.getElementById(`view-${tab}`).classList.remove('hidden');
-            
-            // Update Title
             const titles = { 'dashboard': 'Painel de Controle', 'history': 'Histórico de Emails', 'config': 'Configurações do Sistema' };
             document.getElementById('page-title').innerText = titles[tab];
-
-            // Show/Hide create button
             const btnArea = document.getElementById('create-btn-area');
-            if(tab === 'dashboard') btnArea.style.display = 'block';
-            else btnArea.style.display = 'none';
-
-            // Active State Sidebar
+            if(tab === 'dashboard') btnArea.style.display = 'block'; else btnArea.style.display = 'none';
             document.querySelectorAll('aside nav button').forEach(b => {
                 b.classList.remove('bg-slate-700', 'text-white');
                 b.classList.add('text-slate-400');
@@ -242,69 +206,120 @@
             if(tab === 'config') { loadConfig(); loadDestinations(); }
         }
 
-        // --- Destinations Logic ---
         async function loadDestinations() {
+            const container = document.getElementById('dest-list');
+            const select = document.getElementById('modal-dest-select');
+            
+            // Estado de carregamento apenas se visível
+            if(document.getElementById('view-config').classList.contains('hidden') === false) {
+                container.innerHTML = '<div class="text-slate-500 text-sm animate-pulse">Sincronizando com Cloudflare...</div>';
+            }
+
             try {
                 const res = await fetch('/api/destinations');
+                if(!res.ok) {
+                    const err = await res.text();
+                    container.innerHTML = `<div class="text-red-400 text-sm bg-red-900/20 p-3 rounded border border-red-900/50"><i class="fa-solid fa-circle-exclamation mr-2"></i>${err}</div>`;
+                    return;
+                }
+
                 const list = await res.json();
-                
-                const container = document.getElementById('dest-list');
                 container.innerHTML = '';
-                if(list.length === 0) container.innerHTML = '<p class="text-slate-500 italic text-sm">Nenhum email de destino configurado.</p>';
-                
-                list.forEach(d => {
-                    const item = document.createElement('div');
-                    item.className = 'flex items-center justify-between bg-slate-900 p-3 rounded border border-slate-700';
-                    item.innerHTML = `
-                        <div class="flex items-center gap-3">
-                            <i class="fa-regular fa-envelope text-slate-500"></i>
-                            <span class="text-slate-200">${d.email}</span>
-                        </div>
-                        <button onclick="removeDestination(${d.id})" class="text-red-500 hover:text-red-400 px-2 transition">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    `;
-                    container.appendChild(item);
-                });
-
-                // Update Modal Select
-                const select = document.getElementById('modal-dest-select');
                 select.innerHTML = '';
-                list.forEach(d => {
-                    const opt = document.createElement('option');
-                    opt.value = d.email;
-                    opt.innerText = d.email;
-                    select.appendChild(opt);
-                });
-            } catch(e) { console.error("Erro loading dests", e); }
-        }
 
-        async function addDestination() {
-            const input = document.getElementById('new-dest-email');
-            const email = input.value;
-            if(!email) return;
+                if(!list || list.length === 0) {
+                    container.innerHTML = '<p class="text-slate-500 italic text-sm">Nenhum email encontrado na conta Cloudflare.</p>';
+                } else {
+                    list.forEach(d => {
+                        const isVerified = !!d.verified;
+                        const statusBadge = isVerified 
+                            ? `<span class="text-xs bg-green-500/10 text-green-400 border border-green-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Verificado</span>`
+                            : `<span class="text-xs bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-0.5 rounded font-bold uppercase tracking-wider">Pendente</span>`;
+                        
+                        const iconClass = isVerified ? "fa-check-circle text-green-500" : "fa-clock text-yellow-500";
+                        const opacityClass = isVerified ? "" : "opacity-75";
 
-            const res = await fetch('/api/destinations', {
-                method: 'POST',
-                body: JSON.stringify({ email: email })
-            });
+                        // Lista na Config
+                        const item = document.createElement('div');
+                        item.className = 'flex items-center justify-between bg-slate-900 p-3 rounded border border-slate-700 transition hover:border-slate-600';
+                        item.innerHTML = `
+                            <div class="flex items-center gap-3 ${opacityClass}">
+                                <i class="fa-solid ${iconClass}"></i>
+                                <div>
+                                    <div class="text-slate-200 font-medium">${d.email}</div>
+                                    <div class="text-xs text-slate-500">${statusBadge}</div>
+                                </div>
+                            </div>
+                            <button onclick="deleteDestination('${d.tag}')" class="text-slate-600 hover:text-red-500 px-3 py-2 transition rounded hover:bg-red-500/10" title="Remover da conta">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        `;
+                        container.appendChild(item);
 
-            if(res.ok) {
-                input.value = '';
-                loadDestinations();
-                showToast('Destino adicionado', 'success');
-            } else {
-                showToast('Erro ao adicionar', 'error');
+                        // Select no Modal (Apenas mostra, validation logic no create)
+                        const opt = document.createElement('option');
+                        opt.value = d.email;
+                        opt.innerText = isVerified ? d.email : `${d.email} (Pendente)`;
+                        if(!isVerified) opt.disabled = true; // Desabilita seleção de não verificados
+                        select.appendChild(opt);
+                    });
+                }
+            } catch(e) {
+                container.innerHTML = '<div class="text-red-400 text-sm">Erro de conexão.</div>';
             }
         }
 
-        async function removeDestination(id) {
-            if(!confirm("Remover este email?")) return;
-            await fetch(`/api/destinations?id=${id}`, { method: 'DELETE' });
-            loadDestinations();
+        // --- Add Destination Logic ---
+        function openAddDestModal() { document.getElementById('add-dest-modal').classList.remove('hidden'); }
+        function closeAddDestModal() { document.getElementById('add-dest-modal').classList.add('hidden'); }
+
+        async function confirmAddDest() {
+            const input = document.getElementById('new-dest-input');
+            const email = input.value;
+            const btn = document.getElementById('btn-confirm-add');
+
+            if(!email) return;
+
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Processando...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/destinations', {
+                    method: 'POST',
+                    body: JSON.stringify({ email: email })
+                });
+
+                if(res.ok) {
+                    showToast('Email adicionado! Verifique sua caixa de entrada.', 'success');
+                    input.value = '';
+                    closeAddDestModal();
+                    loadDestinations();
+                } else {
+                    const txt = await res.text();
+                    showToast(txt, 'error');
+                }
+            } catch(e) {
+                showToast('Erro de conexão', 'error');
+            } finally {
+                btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> Enviar Solicitação';
+                btn.disabled = false;
+            }
         }
 
-        // --- Config Logic ---
+        async function deleteDestination(id) {
+            if(!confirm("Tem certeza? Isso impedirá o encaminhamento para este email.")) return;
+            try {
+                const res = await fetch(`/api/destinations?id=${id}`, { method: 'DELETE' });
+                if(res.ok) {
+                    showToast('Destino removido.', 'success');
+                    loadDestinations();
+                } else {
+                    showToast('Erro ao remover.', 'error');
+                }
+            } catch(e) { showToast('Erro de conexão', 'error'); }
+        }
+
+        // --- Standard Logic ---
         async function loadConfig() {
             try {
                 const res = await fetch('/api/config');
@@ -325,18 +340,14 @@
                 domain: document.getElementById('cfg-domain').value
             };
             const res = await fetch('/api/config', { method: 'POST', body: JSON.stringify(data) });
-            if(res.ok) showToast('Credenciais Salvas!', 'success');
+            if(res.ok) {
+                showToast('Credenciais Salvas!', 'success');
+                loadDestinations();
+            }
         }
 
-        // --- Create Flow ---
         async function openCreateModal() {
             await loadDestinations(); 
-            const select = document.getElementById('modal-dest-select');
-            if(select.options.length === 0) {
-                alert("Adicione pelo menos um email de destino nas Configurações!");
-                switchTab('config');
-                return;
-            }
             document.getElementById('create-modal').classList.remove('hidden');
         }
 
@@ -346,8 +357,11 @@
 
         async function confirmCreateEmail() {
             const dest = document.getElementById('modal-dest-select').value;
+            if(!dest) {
+                alert("Selecione um destino válido.");
+                return;
+            }
             const btn = document.getElementById('btn-confirm-create');
-            
             btn.innerHTML = '<i class="fa-solid fa-circle-notch fa-spin"></i> Criando...';
             btn.disabled = true;
 
@@ -373,49 +387,40 @@
             }
         }
 
-        // --- Dashboard & Actions ---
         async function loadActive() {
             const res = await fetch('/api/active');
             const list = await res.json();
             const grid = document.getElementById('active-grid');
             grid.innerHTML = '';
-
             if(!list || list.length === 0) {
                 document.getElementById('empty-dashboard').classList.remove('hidden');
                 return;
             }
             document.getElementById('empty-dashboard').classList.add('hidden');
-
             list.forEach(item => {
                 const created = new Date(item.created_at);
-                const expires = new Date(created.getTime() + 5*60000); // 5 min
-                
+                const expires = new Date(created.getTime() + 5*60000); 
                 const card = document.createElement('div');
                 card.className = "bg-slate-800 border border-slate-700 rounded-xl p-5 relative overflow-hidden group hover:border-orange-500/50 transition shadow-lg";
-                
                 card.innerHTML = `
                     <div class="absolute top-0 left-0 h-1 bg-gradient-to-r from-orange-500 to-red-500 w-full" id="prog-${item.id}"></div>
-                    
                     <div class="flex justify-between items-start mb-4">
                         <div class="text-xs text-slate-400 font-mono flex items-center gap-1 max-w-[65%] truncate" title="${item.destination}">
                             <i class="fa-solid fa-arrow-right-long text-slate-600"></i> ${item.destination}
                         </div>
                         <span id="timer-${item.id}" class="font-mono font-bold text-white bg-slate-900 px-2 py-1 rounded text-sm">--:--</span>
                     </div>
-
                     <div class="mb-5 text-center">
                         <code class="text-lg text-white font-bold cursor-pointer hover:text-orange-400 transition break-all select-all" onclick="copyText('${item.email}')">
                             ${item.email}
                         </code>
                         <p class="text-xs text-slate-500 mt-1">Clique para copiar</p>
                     </div>
-
                     <button onclick="deleteEmail('${item.id}')" class="w-full bg-slate-700 hover:bg-red-600 text-slate-300 hover:text-white py-2 rounded-lg font-bold text-sm transition flex items-center justify-center gap-2">
                         <i class="fa-solid fa-trash"></i> Destruir
                     </button>
                 `;
                 grid.appendChild(card);
-                
                 startLocalTimer(item.id, expires);
             });
         }
@@ -427,20 +432,17 @@
             showToast('Email destruído.', 'success');
         }
 
-        // --- History ---
         async function loadHistory() {
             const res = await fetch('/api/history');
             const list = await res.json();
             const tbody = document.getElementById('history-table');
             tbody.innerHTML = '';
-            
             list.forEach(item => {
                 const row = document.createElement('tr');
                 row.className = "hover:bg-slate-800/50 transition border-b border-slate-700/50 last:border-0";
                 const activeBadge = item.active 
                     ? '<span class="bg-green-500/20 text-green-400 px-2 py-0.5 rounded text-xs border border-green-500/30">ATIVO</span>'
                     : '<span class="bg-slate-700 text-slate-400 px-2 py-0.5 rounded text-xs">EXPIRADO</span>';
-
                 row.innerHTML = `
                     <td class="p-4 font-mono text-white select-all">${item.email}</td>
                     <td class="p-4 text-slate-400 text-xs">${item.destination}</td>
@@ -451,26 +453,19 @@
             });
         }
 
-        // --- Utils ---
         function startLocalTimer(id, expires) {
             const el = document.getElementById(`timer-${id}`);
             const prog = document.getElementById(`prog-${id}`);
             if(!el) return;
-
-            // Clear existing if re-rendering
             if(window[`timer_${id}`]) clearInterval(window[`timer_${id}`]);
-
             window[`timer_${id}`] = setInterval(() => {
                 const now = new Date();
                 const diff = Math.floor((expires - now)/1000);
-                const total = 300; // 5 min
-                
+                const total = 300; 
                 if(diff <= 0) {
                     clearInterval(window[`timer_${id}`]);
                     el.innerText = "00:00";
                     prog.style.width = "0%";
-                    // Optional: reload to remove card automatically
-                    // loadActive();
                 } else {
                     const m = Math.floor(diff/60);
                     const s = diff%60;
@@ -499,7 +494,6 @@
             }, 3000);
         }
 
-        // Init
         switchTab('dashboard');
     </script>
 </body>
