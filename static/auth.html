@@ -11,7 +11,7 @@
 
     <div id="setup-card" class="bg-slate-800 border border-slate-700 p-8 rounded-2xl shadow-2xl max-w-md w-full hidden">
         <h2 class="text-2xl font-bold mb-2">Configuração Inicial 👋</h2>
-        <p class="text-slate-400 mb-6 text-sm">Crie seu usuário administrador para continuar.</p>
+        <p class="text-slate-400 mb-6 text-sm">Crie seu usuário administrador para começar.</p>
         <form id="setup-form" class="space-y-4">
             <input type="text" id="setup-fullname" placeholder="Nome Completo" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 outline-none focus:border-orange-500" required>
             <input type="text" id="setup-username" placeholder="Usuário" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 outline-none focus:border-orange-500" required>
@@ -31,9 +31,10 @@
     </div>
 
     <script>
-        async function checkStatus() {
+        async function init() {
             const res = await fetch('/api/status');
             const status = await res.json();
+            
             if (!status.setup_done) {
                 document.getElementById('setup-card').classList.remove('hidden');
             } else {
@@ -48,8 +49,19 @@
                 username: document.getElementById('setup-username').value,
                 password: document.getElementById('setup-password').value
             };
-            const res = await fetch('/api/setup', { method: 'POST', body: JSON.stringify(data) });
-            if (res.ok) { alert("Admin criado! Agora faça login."); location.reload(); }
+            
+            const res = await fetch('/api/setup', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data) 
+            });
+
+            if (res.ok) {
+                // Troca para o login instantaneamente
+                document.getElementById('setup-card').classList.add('hidden');
+                document.getElementById('login-card').classList.remove('hidden');
+                document.getElementById('login-username').value = data.username;
+            }
         };
 
         document.getElementById('login-form').onsubmit = async (e) => {
@@ -58,15 +70,21 @@
                 username: document.getElementById('login-username').value,
                 password: document.getElementById('login-password').value
             };
-            const res = await fetch('/api/login', { method: 'POST', body: JSON.stringify(data) });
+            const res = await fetch('/api/login', { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data) 
+            });
             if (res.ok) {
                 const { token } = await res.json();
                 localStorage.setItem('token', token);
-                window.location.href = '/'; // Vai para o dashboard principal
-            } else { alert("Usuário ou senha incorretos."); }
+                window.location.href = '/index.html';
+            } else {
+                alert("Credenciais incorretas.");
+            }
         };
 
-        checkStatus();
+        init();
     </script>
 </body>
 </html>

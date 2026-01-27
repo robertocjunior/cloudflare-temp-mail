@@ -16,16 +16,17 @@ func main() {
 	port := config.GetPort()
 	database.InitDB()
 
-	http.Handle("/", http.FileServer(http.Dir("./static")))
+	// Servir arquivos estáticos (HTML, JS, CSS)
+	fs := http.FileServer(http.Dir("./static"))
+	http.Handle("/", fs)
 
-	// Rotas Públicas (Auth e Status)
+	// Rotas Públicas (Essenciais para o Setup)
 	http.HandleFunc("/api/status", handlers.HandleStatus)
 	http.HandleFunc("/api/setup", handlers.HandleSetup)
 	http.HandleFunc("/api/login", handlers.HandleLogin)
 
-	// Rotas Protegidas (Exigem JWT)
+	// Rotas Protegidas (Middleware bloqueia se setup_done for false ou token for inválido)
 	http.HandleFunc("/api/test-cf", handlers.AuthMiddleware(handlers.HandleTestCloudflare))
-    http.HandleFunc("/api/config", handlers.AuthMiddleware(handlers.HandleConfig))
 	http.HandleFunc("/api/config", handlers.AuthMiddleware(handlers.HandleConfig))
 	http.HandleFunc("/api/destinations", handlers.AuthMiddleware(handlers.HandleDestinations))
 	http.HandleFunc("/api/check", handlers.AuthMiddleware(handlers.HandleCheck))
