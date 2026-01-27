@@ -22,7 +22,7 @@
 </head>
 <body class="bg-slate-900 text-slate-100 h-screen flex overflow-hidden">
 
-    <aside id="sidebar" class="sidebar bg-slate-800 border-r border-slate-700 flex flex-col justify-between shadow-2xl relative z-20 shrink-0">
+    <aside id="sidebar" class="sidebar bg-slate-800 border-r border-slate-700 flex flex-col justify-between shadow-2xl relative z-40 shrink-0">
         <div class="logo-area h-16 flex items-center px-6 border-b border-slate-700 relative transition-all">
             <i class="fa-solid fa-fire text-orange-500 text-2xl shrink-0"></i>
             <span class="sidebar-text font-bold text-xl ml-3 tracking-tight">Burner<span class="text-orange-500">Mail</span></span>
@@ -45,11 +45,12 @@
             </button>
         </nav>
         <div class="p-4 border-t border-slate-700 text-center overflow-hidden">
-            <span class="sidebar-text text-xs text-slate-500">v5.5.3 Instant Modal</span>
+            <span class="sidebar-text text-xs text-slate-500">v5.5.4 Z-Index Fix</span>
         </div>
     </aside>
 
     <main class="flex-1 flex flex-col relative overflow-hidden bg-slate-900 w-full">
+        
         <header class="h-16 bg-slate-800/50 backdrop-blur-md border-b border-slate-700 flex items-center px-8 justify-between shrink-0 relative z-30">
             <h2 id="page-title" class="text-lg font-bold text-white">Dashboard</h2>
             
@@ -256,20 +257,12 @@
         });
 
         // --- INSTANT MODAL OPEN LOGIC ---
-        
         async function openCreateModal() {
-            // 1. UI Updates
             document.getElementById('create-dropdown').classList.add('hidden');
             document.getElementById('create-modal').classList.remove('hidden');
-            
-            // 2. Show Loading, Hide Content
             document.getElementById('create-modal-loading').classList.remove('hidden');
             document.getElementById('create-modal-content').classList.add('hidden');
-
-            // 3. Fetch Data
             await loadDestinations(); 
-
-            // 4. Show Content, Hide Loading
             document.getElementById('create-modal-loading').classList.add('hidden');
             document.getElementById('create-modal-content').classList.remove('hidden');
         }
@@ -280,25 +273,18 @@
 
         // --- CUSTOM EMAIL LOGIC ---
         async function openCustomModal() {
-            // 1. UI Updates
             document.getElementById('create-dropdown').classList.add('hidden');
             document.getElementById('custom-modal').classList.remove('hidden');
-
-            // 2. Show Loading, Hide Content
             document.getElementById('custom-modal-loading').classList.remove('hidden');
             document.getElementById('custom-modal-content').classList.add('hidden');
 
-            // 3. Fetch Data (Destinations & Config)
             const destsPromise = loadDestinations();
-            
-            // Fetch domain to show suffix
             const configPromise = fetch('/api/config').then(r => r.json()).then(cfg => {
                 if(cfg.domain) document.getElementById('domain-suffix').innerText = '@' + cfg.domain;
             }).catch(()=>{});
 
             await Promise.all([destsPromise, configPromise]);
 
-            // 4. Show Content
             document.getElementById('custom-modal-loading').classList.add('hidden');
             document.getElementById('custom-modal-content').classList.remove('hidden');
         }
@@ -316,7 +302,6 @@
             
             const fullEmail = alias + domainSuffix;
 
-            // 1. Check if exists
             const checkRes = await fetch(`/api/check?email=${fullEmail}`);
             const checkData = await checkRes.json();
 
@@ -331,7 +316,6 @@
                 return;
             }
 
-            // 2. Create if new
             const btn = document.getElementById('btn-confirm-custom');
             btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Criando...';
             btn.disabled = true;
@@ -540,7 +524,6 @@
 
         // --- STANDARD LOGIC ---
         async function loadDestinations() {
-            // Populate Config List
             const container = document.getElementById('dest-list');
             if(document.getElementById('view-config').classList.contains('hidden') === false) {
                 container.innerHTML = '<div class="text-slate-500 text-sm animate-pulse">Sincronizando...</div>';
@@ -556,7 +539,6 @@
 
                 const list = await res.json();
                 
-                // 1. Fill Config List
                 container.innerHTML = '';
                 if(!list || list.length === 0) {
                     container.innerHTML = '<p class="text-slate-500 italic text-sm">Nenhum email encontrado.</p>';
@@ -587,7 +569,6 @@
                     });
                 }
 
-                // 2. Fill ALL Selects (Modal Create + Modal Custom)
                 const selects = document.querySelectorAll('.dest-select-target');
                 selects.forEach(sel => {
                     sel.innerHTML = '';
