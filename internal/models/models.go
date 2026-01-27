@@ -2,6 +2,25 @@ package models
 
 import "time"
 
+type User struct {
+	ID           int64  `json:"id"`
+	Username     string `json:"username"`
+	Password     string `json:"-"`
+	FullName     string `json:"full_name"`
+	CreatedAt    time.Time `json:"created_at"`
+}
+
+type LoginRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type SetupRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+	FullName string `json:"full_name"`
+}
+
 type Config struct {
 	CFToken string `json:"cf_token"`
 	ZoneID  string `json:"zone_id"`

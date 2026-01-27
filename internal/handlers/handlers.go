@@ -275,7 +275,7 @@ func HandleCreate(w http.ResponseWriter, r *http.Request) {
 		database.DB.Exec("INSERT INTO email_tags (email_id, tag_id) VALUES (?, ?)", ruleID, tagID)
 	}
 
-	startTimer(ruleID, alias, cfg)
+	startTimer(ruleID, cfg)
 	json.NewEncoder(w).Encode(map[string]string{"id": ruleID, "email": alias})
 }
 
@@ -349,7 +349,7 @@ func sendRowsWithTags(w http.ResponseWriter, rows *sql.Rows) {
 	json.NewEncoder(w).Encode(list)
 }
 
-func startTimer(id, email string, cfg models.Config) {
+func startTimer(id string, cfg models.Config) {
 	timerMu.Lock()
 	activeTimers[id] = time.AfterFunc(5*time.Minute, func() {
 		services.CfDeleteRule(cfg, id)

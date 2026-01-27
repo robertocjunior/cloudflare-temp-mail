@@ -18,6 +18,13 @@ func InitDB() {
 	}
 
 	_, err = DB.Exec(`
+		CREATE TABLE IF NOT EXISTS users (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			username TEXT UNIQUE,
+			password TEXT,
+			full_name TEXT,
+			created_at DATETIME
+		);
 		CREATE TABLE IF NOT EXISTS config (
 			id INTEGER PRIMARY KEY CHECK (id = 1),
 			cf_token TEXT,
@@ -48,9 +55,12 @@ func InitDB() {
 	if err != nil {
 		log.Fatal("Erro ao migrar DB:", err)
 	}
+}
 
-	// Migração de segurança caso a coluna pinned não exista
-	DB.Exec("ALTER TABLE emails ADD COLUMN pinned BOOLEAN DEFAULT 0;")
+func IsSetupDone() bool {
+	var count int
+	DB.QueryRow("SELECT COUNT(*) FROM users").Scan(&count)
+	return count > 0
 }
 
 func GetConfig() (models.Config, error) {
