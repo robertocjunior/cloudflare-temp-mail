@@ -283,7 +283,7 @@
         </div>
     </main>
 
-    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
+    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
 
     <div id="create-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-600 rounded-xl shadow-2xl max-w-md w-full p-6 relative transform transition-all scale-100">
@@ -1160,7 +1160,7 @@
             c.appendChild(t);
             setTimeout(() => {
                 t.style.opacity = '0';
-                t.style.transform = 'translateY(-10px)';
+                t.style.transform = 'translateY(10px)';
                 setTimeout(() => t.remove(), 300);
             }, 3000);
         }
