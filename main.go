@@ -38,7 +38,8 @@ type EmailEntry struct {
 	Destination string    `json:"destination"`
 	CreatedAt   time.Time `json:"created_at"`
 	Active      bool      `json:"active"`
-	Pinned      bool      `json:"pinned"` // NOVO CAMPO
+	Pinned      bool      `json:"pinned"`
+	Note        string    `json:"note"` // NOVO: Campo de Nota
 }
 
 type CreateRequest struct {
@@ -49,6 +50,11 @@ type CreateRequest struct {
 type PinRequest struct {
 	ID     string `json:"id"`
 	Pinned bool   `json:"pinned"`
+}
+
+type NoteRequest struct {
+	ID   string `json:"id"`
+	Note string `json:"note"`
 }
 
 // --- Listas de Nomes ---
@@ -76,13 +82,14 @@ func main() {
 	http.HandleFunc("/api/destinations", handleDestinations)
 	http.HandleFunc("/api/check", handleCheck)
 	http.HandleFunc("/api/create", handleCreate)
-	http.HandleFunc("/api/pin", handlePin) // NOVA ROTA
+	http.HandleFunc("/api/pin", handlePin)
+	http.HandleFunc("/api/note", handleNote) // NOVO: Rota de Notas
 	http.HandleFunc("/api/active", handleListActive)
 	http.HandleFunc("/api/history", handleHistory)
 	http.HandleFunc("/api/delete", handleDelete)
 
 	addr := ":" + port
-	fmt.Printf("🚀 Sistema Cloudflare Mail v6 rodando em http://localhost%s\n", addr)
+	fmt.Printf("🚀 Sistema Cloudflare Mail v7 (Notes) rodando em http://localhost%s\n", addr)
 	log.Fatal(http.ListenAndServe(addr, nil))
 }
 
@@ -95,7 +102,6 @@ func initDB() {
 		log.Fatal(err)
 	}
 
-	// Cria tabelas base
 	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS config (
 			id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -109,19 +115,39 @@ func initDB() {
 			destination TEXT,
 			created_at DATETIME,
 			active BOOLEAN,
-			pinned BOOLEAN DEFAULT 0
+			pinned BOOLEAN DEFAULT 0,
+			note TEXT DEFAULT '' 
 		);
 	`)
 	if err != nil {
 		log.Fatal("Erro ao migrar DB:", err)
 	}
 
-	// Migração manual para quem já tem o DB criado (adiciona coluna pinned se não existir)
-	// Ignoramos erro se a coluna já existir
+	// Migrações manuais para garantir que colunas novas existam em bancos antigos
 	db.Exec("ALTER TABLE emails ADD COLUMN pinned BOOLEAN DEFAULT 0;")
+	db.Exec("ALTER TABLE emails ADD COLUMN note TEXT DEFAULT '';")
 }
 
 // --- Handlers ---
+
+func handleNote(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", 405)
+		return
+	}
+	var req NoteRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "JSON inválido", 400)
+		return
+	}
+
+	_, err := db.Exec("UPDATE emails SET note = ? WHERE id = ?", req.Note, req.ID)
+	if err != nil {
+		http.Error(w, "Erro ao atualizar nota", 500)
+		return
+	}
+	w.WriteHeader(http.StatusOK)
+}
 
 func handlePin(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
@@ -141,31 +167,23 @@ func handlePin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Atualiza no Banco
 	_, err = db.Exec("UPDATE emails SET pinned = ? WHERE id = ?", req.Pinned, req.ID)
 	if err != nil {
 		http.Error(w, "Erro ao atualizar DB", 500)
 		return
 	}
 
-	// Gerencia o Timer
 	timerMu.Lock()
 	defer timerMu.Unlock()
 
 	if req.Pinned {
-		// SE FIXOU: Para o timer de auto-destruição
 		if t, ok := activeTimers[req.ID]; ok {
 			t.Stop()
 			delete(activeTimers, req.ID)
 			log.Printf("📌 Email fixado: %s", req.ID)
 		}
 	} else {
-		// SE DESAFIXOU: Inicia um novo timer de 5 minutos (dá uma sobrevida)
-		// Mas só se ainda não tiver um timer rodando (segurança)
 		if _, ok := activeTimers[req.ID]; !ok {
-			// Precisamos buscar o email para logar o nome correto no timer, 
-			// mas para simplificar o timer function, passamos strings simples
-			// ou buscamos de novo. Aqui vamos simplificar.
 			activeTimers[req.ID] = time.AfterFunc(5*time.Minute, func() {
 				log.Printf("⏰ Expirou (pós-fixação): %s", req.ID)
 				cfDeleteRule(cfg, req.ID)
@@ -174,10 +192,6 @@ func handlePin(w http.ResponseWriter, r *http.Request) {
 				delete(activeTimers, req.ID)
 				timerMu.Unlock()
 			})
-			// Atualiza created_at para agora, para o frontend mostrar 5 min cheios? 
-			// Não, mantemos created_at original, mas no frontend tratamos visualmente.
-			// Ou podemos atualizar created_at para reiniciar a contagem visual.
-			// Vamos atualizar o created_at para dar feedback visual de "Reiniciou 5 min"
 			db.Exec("UPDATE emails SET created_at = ? WHERE id = ?", time.Now(), req.ID)
 		}
 	}
@@ -334,8 +348,8 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	_, err = db.Exec(`
-		INSERT INTO emails (id, email, destination, created_at, active, pinned) 
-		VALUES (?, ?, ?, ?, ?, 0)
+		INSERT INTO emails (id, email, destination, created_at, active, pinned, note) 
+		VALUES (?, ?, ?, ?, ?, 0, '')
 		ON CONFLICT(email) DO UPDATE SET 
 			id=excluded.id, 
 			destination=excluded.destination, 
@@ -353,8 +367,8 @@ func handleCreate(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleListActive(w http.ResponseWriter, r *http.Request) {
-	// Atualizado para selecionar 'pinned'
-	rows, _ := db.Query("SELECT id, email, destination, created_at, active, pinned FROM emails WHERE active = 1 ORDER BY pinned DESC, created_at DESC")
+	// Query atualizada para trazer a nota
+	rows, _ := db.Query("SELECT id, email, destination, created_at, active, pinned, note FROM emails WHERE active = 1 ORDER BY pinned DESC, created_at DESC")
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -362,7 +376,8 @@ func handleListActive(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleHistory(w http.ResponseWriter, r *http.Request) {
-	rows, _ := db.Query("SELECT id, email, destination, created_at, active, pinned FROM emails ORDER BY created_at DESC")
+	// Query atualizada para trazer a nota
+	rows, _ := db.Query("SELECT id, email, destination, created_at, active, pinned, note FROM emails ORDER BY created_at DESC")
 	if rows != nil {
 		defer rows.Close()
 	}
@@ -411,8 +426,8 @@ func sendRows(w http.ResponseWriter, rows *sql.Rows) {
 	if rows != nil {
 		for rows.Next() {
 			var e EmailEntry
-			// Scan atualizado com pinned
-			rows.Scan(&e.ID, &e.Email, &e.Destination, &e.CreatedAt, &e.Active, &e.Pinned)
+			// Scan atualizado para incluir note
+			rows.Scan(&e.ID, &e.Email, &e.Destination, &e.CreatedAt, &e.Active, &e.Pinned, &e.Note)
 			list = append(list, e)
 		}
 	}
