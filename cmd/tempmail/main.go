@@ -20,12 +20,12 @@ func main() {
 	fs := http.FileServer(http.Dir("./static"))
 	http.Handle("/", fs)
 
-	// Rotas Públicas (Essenciais para o Setup)
+	// Rotas Públicas
 	http.HandleFunc("/api/status", handlers.HandleStatus)
 	http.HandleFunc("/api/setup", handlers.HandleSetup)
 	http.HandleFunc("/api/login", handlers.HandleLogin)
 
-	// Rotas Protegidas (Middleware bloqueia se setup_done for false ou token for inválido)
+	// Rotas Protegidas (Middleware)
 	http.HandleFunc("/api/test-cf", handlers.AuthMiddleware(handlers.HandleTestCloudflare))
 	http.HandleFunc("/api/config", handlers.AuthMiddleware(handlers.HandleConfig))
 	http.HandleFunc("/api/destinations", handlers.AuthMiddleware(handlers.HandleDestinations))

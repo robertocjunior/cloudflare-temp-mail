@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuração Cloudflare - Burner Mail</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-slate-100 h-screen flex items-center justify-center p-4">
+
+    <div class="bg-slate-800 border border-slate-700 p-8 rounded-2xl shadow-2xl max-w-lg w-full">
+        <div class="flex items-center gap-3 mb-6">
+            <i class="fa-brands fa-cloudflare text-orange-500 text-4xl"></i>
+            <div>
+                <h2 class="text-2xl font-bold">Cloudflare API</h2>
+                <p class="text-slate-400 text-sm">Vínculo obrigatório para funcionamento</p>
+            </div>
+        </div>
+
+        <form id="cf-setup-form" class="space-y-5">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-2">API Token (Edit Zone DNS)</label>
+                <input type="password" id="cf-token" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 outline-none focus:border-orange-500 transition" placeholder="••••••••••••••••••••" required>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Zone ID</label>
+                    <input type="text" id="cf-zone" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 outline-none focus:border-orange-500 transition" placeholder="ID da sua zona" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase mb-2">Domínio</label>
+                    <input type="text" id="cf-domain" class="w-full bg-slate-900 border border-slate-700 rounded-lg p-3 outline-none focus:border-orange-500 transition" placeholder="exemplo.com" required>
+                </div>
+            </div>
+
+            <div id="test-status" class="hidden p-4 rounded-lg text-sm font-medium"></div>
+
+            <button type="submit" id="btn-save" class="w-full bg-orange-600 hover:bg-orange-500 py-3 rounded-lg font-bold transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-vial"></i> Testar e Ativar Sistema
+            </button>
+        </form>
+        
+        <button onclick="logout()" class="w-full mt-4 text-slate-500 hover:text-slate-300 text-sm transition text-center">
+            Sair da conta
+        </button>
+    </div>
+
+    <script>
+        const TOKEN = localStorage.getItem('token');
+        if (!TOKEN) window.location.href = '/auth.html';
+
+        const form = document.getElementById('cf-setup-form');
+        const btn = document.getElementById('btn-save');
+        const statusDiv = document.getElementById('test-status');
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Testando conexão...';
+            statusDiv.classList.add('hidden');
+
+            const config = {
+                cf_token: document.getElementById('cf-token').value,
+                zone_id: document.getElementById('cf-zone').value,
+                domain: document.getElementById('cf-domain').value
+            };
+
+            try {
+                const testRes = await fetch('/api/test-cf', {
+                    method: 'POST',
+                    headers: { 
+                        'Authorization': `Bearer ${TOKEN}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                if (testRes.ok) {
+                    const saveRes = await fetch('/api/config', {
+                        method: 'POST',
+                        headers: { 
+                            'Authorization': `Bearer ${TOKEN}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(config)
+                    });
+
+                    if (saveRes.ok) {
+                        statusDiv.className = "p-4 rounded-lg text-sm font-medium bg-green-500/10 text-green-400 border border-green-500/20";
+                        statusDiv.innerHTML = '<i class="fa-solid fa-check-circle mr-2"></i> Sucesso! Redirecionando...';
+                        statusDiv.classList.remove('hidden');
+                        setTimeout(() => window.location.href = '/index.html', 1500);
+                    }
+                } else {
+                    const errorMsg = await testRes.text();
+                    statusDiv.className = "p-4 rounded-lg text-sm font-medium bg-red-500/10 text-red-400 border border-red-500/20";
+                    statusDiv.innerHTML = `<i class="fa-solid fa-circle-xmark mr-2"></i> Erro: ${errorMsg}`;
+                    statusDiv.classList.remove('hidden');
+                }
+            } catch (err) {
+                console.error(err);
+                alert("Erro ao conectar com o servidor.");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-vial"></i> Testar e Ativar Sistema';
+            }
+        };
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/auth.html';
+        }
+    </script>
+</body>
+</html>

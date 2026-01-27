@@ -1,34 +1,33 @@
 const API_TOKEN = localStorage.getItem('token');
 
-// Função de bloqueio imediato e verificação de acesso
 async function checkAccess() {
     try {
         const res = await fetch('/api/status');
         const status = await res.json();
 
-        // 1. Se não houver usuário criado no DB, força ir para o auth.html (Setup)
+        // Bloqueio 1: Se não houver usuário no DB
         if (!status.setup_done) {
             window.location.href = '/auth.html';
             return;
         }
 
-        // 2. Se o setup existe mas não há token no navegador, vai para o login
+        // Bloqueio 2: Se não estiver logado
         if (!API_TOKEN) {
             window.location.href = '/auth.html';
             return;
         }
 
-        // 3. Se estiver logado mas o Cloudflare não estiver configurado
+        // Bloqueio 3: Se logado, mas Cloudflare NÃO configurado
         if (!status.config_done) {
-            switchTab('config');
-            showToast("Por favor, configure o Cloudflare primeiro.", "error");
+            window.location.href = '/config_setup.html';
+            return;
         }
     } catch (e) {
-        console.error("Erro ao verificar acesso:", e);
+        console.error("Erro de comunicação com API:", e);
     }
 }
 
-// Executa a proteção antes de carregar o restante do script
+// Trava o carregamento até validar
 checkAccess();
 
 // --- TAG SYSTEM CLASS (THUNDERBIRD STYLE) ---
