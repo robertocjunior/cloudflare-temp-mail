@@ -136,3 +136,10 @@ body { font-family: 'Inter', sans-serif; }
     display: inline-block;
     flex-shrink: 0;
 }
+
+/* --- REGRAS ADICIONAIS PARA LOGOUT --- */
+.logout-btn {
+    cursor: pointer !important;
+    z-index: 50;
+    position: relative;
+}

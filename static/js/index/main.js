@@ -33,13 +33,55 @@ checkAccess();
 // Função de Logout - Chamada pelo botão de sair
 async function logout() {
     try {
-        // Opcional: chama backend para invalidar token se houver endpoint
         await apiFetch('/api/logout', { method: 'POST' });
     } catch (e) {
         console.error("Erro ao deslogar no backend:", e);
     } finally {
         localStorage.removeItem('token');
         window.location.href = '/auth.html';
+    }
+}
+
+// NOVA FUNÇÃO: Trocar Senha
+async function changePassword(e) {
+    e.preventDefault();
+    
+    const current = document.getElementById('pwd-current').value;
+    const n1 = document.getElementById('pwd-new').value;
+    const n2 = document.getElementById('pwd-confirm').value;
+    const btn = document.getElementById('btn-change-pwd');
+
+    if (n1 !== n2) {
+        showToast('As novas senhas não coincidem!', 'error');
+        return;
+    }
+
+    if (n1.length < 6) {
+        showToast('A nova senha deve ter pelo menos 6 caracteres.', 'error');
+        return;
+    }
+
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Atualizando...';
+    btn.disabled = true;
+
+    try {
+        const res = await apiFetch('/api/auth/change-password', {
+            method: 'POST',
+            body: JSON.stringify({ current_password: current, new_password: n1 })
+        });
+
+        if (res.ok) {
+            showToast('Senha alterada com sucesso!', 'success');
+            e.target.reset();
+        } else {
+            const txt = await res.text();
+            showToast(txt || 'Erro ao alterar senha.', 'error');
+        }
+    } catch (e) {
+        showToast('Erro de conexão.', 'error');
+    } finally {
+        btn.innerHTML = '<i class="fa-solid fa-shield-halved"></i> Atualizar Senha';
+        btn.disabled = false;
     }
 }
 
@@ -207,7 +249,6 @@ async function apiFetch(url, options = {}) {
     options.headers['Content-Type'] = 'application/json';
     
     const res = await fetch(url, options);
-    // Se o status for 401 (Não autorizado) ou 412 (Setup pendente), limpa e redireciona
     if (res.status === 401 || res.status === 412) {
         localStorage.removeItem('token');
         window.location.href = '/auth.html';
