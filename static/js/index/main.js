@@ -206,7 +206,6 @@ async function apiFetch(url, options = {}) {
     options.headers['Content-Type'] = 'application/json';
     
     const res = await fetch(url, options);
-    // Se o status for 401 (Não autorizado) ou 412 (Setup pendente), limpa e redireciona
     if (res.status === 401 || res.status === 412) {
         localStorage.removeItem('token');
         window.location.href = '/auth.html';

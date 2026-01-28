@@ -11,35 +11,37 @@
 <body class="bg-slate-900 text-slate-100 h-screen flex overflow-hidden">
 
     <aside id="sidebar" class="sidebar bg-slate-800 border-r border-slate-700 flex flex-col justify-between shadow-2xl relative z-40 shrink-0">
-        <div class="logo-area h-16 flex items-center px-6 border-b border-slate-700 relative transition-all">
-            <i class="fa-solid fa-fire text-orange-500 text-2xl shrink-0"></i>
-            <span class="sidebar-text font-bold text-xl ml-3 tracking-tight">Burner<span class="text-orange-500">Mail</span></span>
-            <button onclick="toggleSidebar()" class="absolute -right-3 top-6 bg-orange-600 rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:bg-orange-500 transition border border-slate-900 z-50">
-                <i class="fa-solid fa-chevron-left transition-transform duration-300" id="chevron"></i>
-            </button>
-        </div>
-        <nav class="flex-1 py-6 space-y-2 px-3">
-            <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center p-3 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition group">
-                <i class="fa-solid fa-inbox w-6 text-center text-lg shrink-0 transition-all"></i>
-                <span class="sidebar-text ml-3 font-medium">Ativos</span>
-            </button>
-            <button onclick="switchTab('history')" id="nav-history" class="nav-item w-full flex items-center p-3 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition group">
-                <i class="fa-solid fa-clock-rotate-left w-6 text-center text-lg shrink-0 transition-all"></i>
-                <span class="sidebar-text ml-3 font-medium">Histórico</span>
-            </button>
-            <button onclick="switchTab('config')" id="nav-config" class="nav-item w-full flex items-center p-3 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition group">
-                <i class="fa-solid fa-gear w-6 text-center text-lg shrink-0 transition-all"></i>
-                <span class="sidebar-text ml-3 font-medium">Configurações</span>
-            </button>
-        </nav>
-        
-        <div class="p-4 border-t border-slate-700 space-y-2">
-            <button onclick="logout()" class="w-full flex items-center p-3 rounded-lg text-red-400 hover:bg-red-500/10 transition group">
-                <i class="fa-solid fa-right-from-bracket w-6 text-center text-lg shrink-0"></i>
-                <span class="sidebar-text ml-3 font-medium">Sair</span>
-            </button>
-            <div class="text-center overflow-hidden">
-                <span class="sidebar-text text-xs text-slate-500">v6.3 Precision Delete</span>
+        <div class="flex flex-col h-full">
+            <div class="logo-area h-16 flex items-center px-6 border-b border-slate-700 relative transition-all">
+                <i class="fa-solid fa-fire text-orange-500 text-2xl shrink-0"></i>
+                <span class="sidebar-text font-bold text-xl ml-3 tracking-tight">Burner<span class="text-orange-500">Mail</span></span>
+                <button onclick="toggleSidebar()" class="absolute -right-3 top-6 bg-orange-600 rounded-full w-6 h-6 flex items-center justify-center text-xs shadow-lg hover:bg-orange-500 transition border border-slate-900 z-50">
+                    <i class="fa-solid fa-chevron-left transition-transform duration-300" id="chevron"></i>
+                </button>
+            </div>
+            <nav class="flex-1 py-6 space-y-2 px-3">
+                <button onclick="switchTab('dashboard')" id="nav-dashboard" class="nav-item w-full flex items-center p-3 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition group">
+                    <i class="fa-solid fa-inbox w-6 text-center text-lg shrink-0 transition-all"></i>
+                    <span class="sidebar-text ml-3 font-medium">Ativos</span>
+                </button>
+                <button onclick="switchTab('history')" id="nav-history" class="nav-item w-full flex items-center p-3 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition group">
+                    <i class="fa-solid fa-clock-rotate-left w-6 text-center text-lg shrink-0 transition-all"></i>
+                    <span class="sidebar-text ml-3 font-medium">Histórico</span>
+                </button>
+                <button onclick="switchTab('config')" id="nav-config" class="nav-item w-full flex items-center p-3 rounded-lg text-slate-400 hover:bg-slate-700 hover:text-white transition group">
+                    <i class="fa-solid fa-gear w-6 text-center text-lg shrink-0 transition-all"></i>
+                    <span class="sidebar-text ml-3 font-medium">Configurações</span>
+                </button>
+            </nav>
+
+            <div class="p-3 border-t border-slate-700">
+                <button onclick="logout()" class="logout-btn w-full flex items-center p-3 rounded-lg text-red-400 hover:bg-red-500/10 transition group">
+                    <i class="fa-solid fa-right-from-bracket w-6 text-center text-lg shrink-0"></i>
+                    <span class="sidebar-text ml-3 font-medium">Sair</span>
+                </button>
+                <div class="text-center mt-2 overflow-hidden">
+                    <span class="sidebar-text text-[10px] text-slate-500 uppercase tracking-widest">v6.3 Precision Delete</span>
+                </div>
             </div>
         </div>
     </aside>
@@ -159,18 +161,15 @@
         <div class="bg-slate-800 border border-slate-600 rounded-xl shadow-2xl max-w-md w-full p-6 relative transform transition-all scale-100">
             <button onclick="closeCreateModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
             <h3 class="text-xl font-bold text-white mb-4">Gerar Novo Email</h3>
-            
             <div id="create-modal-loading" class="flex flex-col items-center justify-center py-8">
                 <i class="fa-solid fa-circle-notch fa-spin text-3xl text-orange-500 mb-2"></i>
                 <p class="text-slate-500 text-sm">Carregando destinos...</p>
             </div>
-
             <div id="create-modal-content" class="hidden">
                 <div class="mb-4">
                     <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Destino Real</label>
                     <select id="modal-dest-select" class="dest-select-target w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none focus:border-orange-500"></select>
                 </div>
-
                 <div class="mb-6 relative">
                     <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Tags</label>
                     <div class="tag-input-container" onclick="document.getElementById('tag-input-create').focus()">
@@ -179,7 +178,6 @@
                     </div>
                     <div id="suggestions-create" class="suggestions-list"></div>
                 </div>
-
                 <button onclick="confirmCreateEmail()" id="btn-confirm-create" class="w-full bg-orange-600 hover:bg-orange-500 text-white font-bold py-3 rounded shadow-lg transition flex justify-center items-center gap-2">
                     <i class="fa-solid fa-magic-wand-sparkles"></i> Gerar Agora
                 </button>
@@ -191,12 +189,10 @@
         <div class="bg-slate-800 border border-slate-600 rounded-xl shadow-2xl max-w-md w-full p-6 relative transform transition-all scale-100">
             <button onclick="closeCustomModal()" class="absolute top-4 right-4 text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
             <h3 class="text-xl font-bold text-white mb-2">Email Personalizado</h3>
-            
             <div id="custom-modal-loading" class="flex flex-col items-center justify-center py-8">
                 <i class="fa-solid fa-circle-notch fa-spin text-3xl text-blue-500 mb-2"></i>
                 <p class="text-slate-500 text-sm">Preparando...</p>
             </div>
-
             <div id="custom-modal-content" class="hidden">
                 <div class="space-y-4 mb-6">
                     <div>
@@ -210,7 +206,6 @@
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Destino Real</label>
                         <select id="custom-dest-select" class="dest-select-target w-full bg-slate-900 border border-slate-600 rounded p-3 text-white outline-none focus:border-blue-500"></select>
                     </div>
-
                     <div class="relative">
                         <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Tags</label>
                         <div class="tag-input-container" onclick="document.getElementById('tag-input-custom').focus()">
@@ -220,7 +215,6 @@
                         <div id="suggestions-custom" class="suggestions-list"></div>
                     </div>
                 </div>
-
                 <button onclick="confirmCustomEmail()" id="btn-confirm-custom" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-3 rounded shadow-lg transition flex justify-center items-center gap-2">
                     <i class="fa-solid fa-check"></i> Criar Personalizado
                 </button>
