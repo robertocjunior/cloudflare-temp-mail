@@ -1,6 +1,6 @@
 services:
   tempmail:
-    build: .
+    image: ghcr.io/robertocjunior/mail-burner:latest
     container_name: mail-burner
     ports:
       - "8059:8080"
