@@ -69,13 +69,53 @@ func HandleLogin(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"token": token})
 }
 
-// HandleLogout apenas confirma o encerramento da sessão para o cliente
+// HandleLogout apenas confirma o encerramento da sessão
 func HandleLogout(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]string{"message": "Logout realizado com sucesso"})
 }
 
-// HandleTestCloudflare valida se as credenciais funcionam antes de salvar
+// HandleChangePassword altera a senha do usuário logado
+func HandleChangePassword(w http.ResponseWriter, r *http.Request) {
+	// Obtém o usuário do contexto (definido pelo AuthMiddleware)
+	username := r.Context().Value("username").(string)
+
+	var req struct {
+		CurrentPassword string `json:"current_password"`
+		NewPassword     string `json:"new_password"`
+	}
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Dados inválidos", http.StatusBadRequest)
+		return
+	}
+
+	// Verifica a senha atual
+	var hashedPassword string
+	err := database.DB.QueryRow("SELECT password FROM users WHERE username = ?", username).Scan(&hashedPassword)
+	if err != nil {
+		http.Error(w, "Usuário não encontrado", http.StatusNotFound)
+		return
+	}
+
+	if !services.CheckPasswordHash(req.CurrentPassword, hashedPassword) {
+		http.Error(w, "Senha atual incorreta", http.StatusUnauthorized)
+		return
+	}
+
+	// Criptografa e atualiza a nova senha
+	newHashedPassword, _ := services.HashPassword(req.NewPassword)
+	_, err = database.DB.Exec("UPDATE users SET password = ? WHERE username = ?", newHashedPassword, username)
+	if err != nil {
+		http.Error(w, "Erro ao atualizar senha", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(map[string]string{"message": "Senha atualizada com sucesso"})
+}
+
+// HandleTestCloudflare valida se as credenciais funcionam
 func HandleTestCloudflare(w http.ResponseWriter, r *http.Request) {
 	var cfg models.Config
 	if err := json.NewDecoder(r.Body).Decode(&cfg); err != nil {

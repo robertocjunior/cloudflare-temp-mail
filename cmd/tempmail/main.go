@@ -26,6 +26,7 @@ func main() {
 
 	// Rotas Protegidas
 	http.HandleFunc("/api/logout", handlers.AuthMiddleware(handlers.HandleLogout))
+	http.HandleFunc("/api/auth/change-password", handlers.AuthMiddleware(handlers.HandleChangePassword)) // NOVA ROTA
 	http.HandleFunc("/api/test-cf", handlers.AuthMiddleware(handlers.HandleTestCloudflare))
 	http.HandleFunc("/api/config", handlers.AuthMiddleware(handlers.HandleConfig))
 	http.HandleFunc("/api/destinations", handlers.AuthMiddleware(handlers.HandleDestinations))
